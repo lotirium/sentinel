@@ -17,7 +17,7 @@ class PredictionResponse(BaseModel):
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
-    # Memory-efficient guard: skip tensor allocation entirely for empty input
+    # Guard: return default immediately when features list is empty
     if not request.features:
         return PredictionResponse(prediction=0.0, feature_count=0)
 
