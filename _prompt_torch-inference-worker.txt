@@ -1,0 +1,17 @@
+The file is at /mnt/c/Users/Asus/Desktop/sentinel/services/torch_worker.py.
+Fix the RuntimeError: change dtype=torch.int32 to dtype=torch.float32 in the k = torch.tensor(...) line inside compute_similarity().
+Run: pytest tests/test_torch_worker.py
+Commit with message: 'fix: correct tensor dtype in compute_similarity'
+
+Traceback:
+
+        k = torch.tensor([keys], dtype=torch.int32)   # BUG: should be float32
+>       result = torch.mm(q, k.T)
+                 ^^^^^^^^^^^^^^^^
+E       RuntimeError: expected m1 and m2 to have the same dtype, but got: float != int
+
+services\torch_worker.py:17: RuntimeError
+=========================== short test summary info ===========================
+FAILED tests/test_torch_worker.py::test_valid_similarity - RuntimeError: expe...
+FAILED tests/test_torch_worker.py::test_dtype_mismatch - RuntimeError: expect...
+============================== 2 failed in 2.74s ==============================

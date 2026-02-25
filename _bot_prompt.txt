@@ -1,0 +1,13 @@
+Project location: /mnt/c/Users/Asus/Desktop/sentinel
+
+Project overview:
+  main.py              — FastAPI Price Prediction service (port 8000)
+  tests/test_api.py    — pytest test suite for main.py
+  services/            — additional service modules
+  dashboard.py         — dashboard server (port 8080)
+  static/index.html    — dashboard frontend
+
+User instruction:
+https://github.com/lotirium/sentinel deploy to permanent URL
+
+Apply the requested change. If code with existing tests is affected, run the relevant pytest suite to verify. Briefly confirm what was changed.

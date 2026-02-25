@@ -1,0 +1,30 @@
+I have a ZeroDivisionError in main.py when the input features list is empty.
+
+Read main.py and tests/test_api.py.
+
+Fix the bug in main.py by adding a check: if the list is empty, return a default prediction of 0.0 with a 200 status.
+
+Ensure the fix is memory efficient.
+
+Run 'pytest tests/test_api.py' to verify.
+
+If tests pass, commit the change with message: 'fix: handle empty input in predict'.
+
+Traceback for reference:
+est = PredictionRequest(features=[])
+
+    @app.post("/predict", response_model=PredictionResponse)
+    def predict(request: PredictionRequest):
+        # Guard: return default immediately when features list is empty
+    
+        # Convert input features to a PyTorch tensor
+        tensor = torch.tensor(request.features, dtype=torch.float32)
+    
+>       prediction = float(tensor.sum()) / len(request.features)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ZeroDivisionError: float division by zero
+
+main.py:25: ZeroDivisionError
+=========================== short test summary info ===========================
+FAILED tests/test_api.py::test_empty_input - ZeroDivisionError: float divisio...
+========================= 1 failed, 1 passed in 2.67s =========================

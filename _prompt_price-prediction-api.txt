@@ -1,0 +1,19 @@
+The file is at /mnt/c/Users/Asus/Desktop/sentinel/main.py.
+Fix the ZeroDivisionError: when request.features is empty, return PredictionResponse(prediction=0.0, feature_count=0) before touching the tensor.
+Run: pytest tests/test_api.py
+Commit with message: 'fix: handle empty input in predict'
+
+Traceback:
+s list is empty
+    
+        # Convert input features to a PyTorch tensor
+        tensor = torch.tensor(request.features, dtype=torch.float32)
+    
+>       prediction = float(tensor.sum()) / len(request.features)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ZeroDivisionError: float division by zero
+
+main.py:25: ZeroDivisionError
+=========================== short test summary info ===========================
+FAILED tests/test_api.py::test_empty_input - ZeroDivisionError: float divisio...
+========================= 1 failed, 1 passed in 3.57s =========================

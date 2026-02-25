@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeSentinel — AI Health Monitor</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #080b12;
+  --surface:  #0d1117;
+  --surface2: #111820;
+  --surface3: #18212e;
+  --border:   #1e2a3a;
+  --border2:  #2a3a50;
+  --text:     #e2eaf4;
+  --muted:    #7a8899;
+  --dim:      #445566;
+  --green:    #00e87a;
+  --yellow:   #f0b429;
+  --red:      #ff5050;
+  --blue:     #4fa3f7;
+  --purple:   #b87eff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+body { display: flex; flex-direction: column; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ── HEADER ─────────────────────────────────────────────────────────────── */
+header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.logo { display: flex; align-items: center; gap: .55rem; font-size: .95rem; font-weight: 700; letter-spacing: -.02em; }
+.logo-icon {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, #1a65e0 0%, #4fa3f7 100%);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem; flex-shrink: 0;
+  box-shadow: 0 0 14px rgba(79,163,247,.3);
+}
+.logo-name em { color: var(--blue); font-style: normal; }
+
+.header-sep { width: 1px; height: 22px; background: var(--border); }
+.spacer { flex: 1; }
+
+#global-status {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .78rem; font-weight: 600; color: var(--muted);
+}
+#global-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 8px rgba(0,232,122,.6); transition: all .3s;
+}
+#global-dot.bad    { background: var(--red);    box-shadow: 0 0 8px rgba(255,80,80,.7);  animation: dotPulse 1s infinite; }
+#global-dot.fixing { background: var(--yellow); box-shadow: 0 0 8px rgba(240,180,41,.7); animation: dotPulse 1.3s infinite; }
+@keyframes dotPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: .5; } }
+
+/* ── LANGUAGE SWITCHER ───────────────────────────────────────────────────── */
+#view-service-btn {
+  font-size: .72rem; font-weight: 700;
+  color: #818cf8; background: rgba(99,102,241,.1);
+  border: 1px solid rgba(99,102,241,.3); border-radius: 8px;
+  padding: .28rem .75rem; text-decoration: none;
+  transition: all .15s; white-space: nowrap;
+}
+#view-service-btn:hover { background: rgba(99,102,241,.2); border-color: rgba(99,102,241,.5); }
+
+.lang-switcher {
+  display: flex;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.lang-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: .28rem .65rem;
+  cursor: pointer;
+  transition: all .15s;
+}
+.lang-btn.active { background: var(--surface3); color: var(--text); }
+.lang-btn:hover:not(.active) { color: var(--text); }
+
+/* ── MAIN ────────────────────────────────────────────────────────────────── */
+main { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+/* ── SIDEBAR ──────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 264px; flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
+}
+.sb-section { padding: 1rem; border-bottom: 1px solid var(--border); }
+.sb-title {
+  font-size: .58rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: .7rem;
+}
+
+.svc-list { display: flex; flex-direction: column; gap: .4rem; }
+.svc-card {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .62rem .75rem; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--surface2);
+  transition: border-color .35s, box-shadow .35s;
+}
+.svc-card.healthy   { border-color: rgba(0,232,122,.25); box-shadow: 0 0 10px rgba(0,232,122,.06); }
+.svc-card.error     { border-color: rgba(255,80,80,.35); }
+.svc-card.fixing    { border-color: rgba(240,180,41,.3); }
+.svc-card.verifying { border-color: rgba(79,163,247,.3); }
+
+.svc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; transition: all .3s; }
+.svc-dot.green  { background: var(--green);  box-shadow: 0 0 7px rgba(0,232,122,.7); }
+.svc-dot.yellow { background: var(--yellow); box-shadow: 0 0 7px rgba(240,180,41,.7); animation: dotPulse 1.3s infinite; }
+.svc-dot.red    { background: var(--red);    box-shadow: 0 0 7px rgba(255,80,80,.7);  animation: dotPulse 1s infinite; }
+.svc-dot.blue   { background: var(--blue);   box-shadow: 0 0 7px rgba(79,163,247,.7); animation: dotPulse 1.5s infinite; }
+
+.svc-info { flex: 1; min-width: 0; }
+.svc-name { font-size: .82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.svc-role { font-size: .68rem; color: var(--muted); margin-top: .06rem; }
+.svc-badge {
+  font-size: .57rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  padding: .1rem .4rem; border-radius: 5px; flex-shrink: 0; transition: all .3s;
+}
+.svc-badge.green  { background: rgba(0,232,122,.1);  color: var(--green); }
+.svc-badge.yellow { background: rgba(240,180,41,.1); color: var(--yellow); }
+.svc-badge.red    { background: rgba(255,80,80,.1);  color: var(--red); }
+.svc-badge.blue   { background: rgba(79,163,247,.1); color: var(--blue); }
+
+.pulse-wrap { position: relative; height: 60px; }
+#pulse-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+.stats-row { display: flex; gap: .5rem; }
+.stat-box { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: .55rem .65rem; }
+.stat-val { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.stat-val.green { color: var(--green); }
+.stat-val.blue  { color: var(--blue); }
+.stat-lbl { font-size: .6rem; color: var(--muted); margin-top: .1rem; }
+
+/* ── CONTENT ─────────────────────────────────────────────────────────────── */
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; position: relative; }
+
+/* ── HOME PANEL ───────────────────────────────────────────────────────────── */
+#home-panel {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 2rem; gap: 0; transition: opacity .3s;
+}
+.home-hero { text-align: center; max-width: 480px; margin-bottom: 2.5rem; }
+.hero-icon {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, rgba(26,101,224,.25) 0%, rgba(79,163,247,.15) 100%);
+  border: 1px solid rgba(79,163,247,.3); border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; margin: 0 auto 1.5rem;
+  box-shadow: 0 0 32px rgba(79,163,247,.15);
+}
+.hero-title { font-size: 1.85rem; font-weight: 700; letter-spacing: -.025em; color: var(--text); margin-bottom: .65rem; }
+.hero-title em { color: var(--blue); font-style: normal; }
+.hero-sub { font-size: .98rem; color: var(--muted); line-height: 1.75; }
+
+.home-options {
+  width: 100%; max-width: 420px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1.1rem 1.25rem; margin-bottom: 1.75rem;
+}
+.options-title {
+  font-size: .65rem; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: .9rem;
+}
+.option-row { display: flex; align-items: flex-start; gap: .9rem; cursor: pointer; user-select: none; }
+.option-row:hover .toggle { opacity: .9; }
+
+.toggle {
+  width: 40px; height: 22px; background: var(--border2);
+  border-radius: 99px; position: relative; flex-shrink: 0;
+  transition: background .2s; margin-top: .12rem;
+}
+.toggle.on { background: var(--blue); }
+.toggle::after {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; background: #fff;
+  border-radius: 50%; top: 3px; left: 3px;
+  transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.toggle.on::after { transform: translateX(18px); }
+
+.option-text { flex: 1; }
+.option-label { font-size: .9rem; font-weight: 600; color: var(--text); }
+.option-desc  { font-size: .8rem; color: var(--muted); margin-top: .2rem; line-height: 1.55; }
+
+#start-btn {
+  width: 100%; max-width: 420px;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #1a65e0, #3d8ef0);
+  color: #fff; font-size: 1rem; font-weight: 700;
+  border: none; border-radius: 12px; cursor: pointer;
+  transition: opacity .15s, transform .12s, box-shadow .2s;
+  box-shadow: 0 4px 20px rgba(26,101,224,.4); letter-spacing: .01em;
+}
+#start-btn:hover:not(:disabled) { opacity: .92; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(26,101,224,.5); }
+#start-btn:active:not(:disabled) { transform: translateY(0); }
+#start-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.start-hint { margin-top: .9rem; font-size: .68rem; color: var(--dim); text-align: center; }
+.key-hint {
+  display: inline-block; background: var(--surface3);
+  border: 1px solid var(--border2); border-radius: 4px;
+  padding: .05rem .35rem; font-family: monospace; font-size: .66rem; color: var(--muted);
+}
+
+/* ── ACTIVITY PANEL ───────────────────────────────────────────────────────── */
+#activity-panel { flex: 1; display: none; flex-direction: column; overflow: hidden; opacity: 0; transition: opacity .3s; }
+#activity-panel.visible { display: flex; }
+#activity-panel.shown   { opacity: 1; }
+
+.activity-hd {
+  display: flex; align-items: center;
+  padding: .7rem 1.5rem; border-bottom: 1px solid var(--border);
+  background: var(--surface); flex-shrink: 0; gap: 1rem;
+}
+.activity-hd-left { display: flex; align-items: center; gap: .7rem; }
+#back-btn {
+  background: none; border: 1px solid var(--border2); border-radius: 7px;
+  color: var(--muted); font-size: .75rem; padding: .28rem .7rem;
+  cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: .35rem;
+}
+#back-btn:hover { border-color: var(--blue); color: var(--blue); }
+.activity-title { font-size: .82rem; font-weight: 700; color: var(--text); }
+
+.phase-tag {
+  font-size: .6rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; padding: .18rem .55rem;
+  border-radius: 99px; border: 1px solid var(--border2);
+  color: var(--muted); transition: all .3s;
+}
+.phase-tag.running  { color: var(--blue);   border-color: rgba(79,163,247,.4);  background: rgba(79,163,247,.08); }
+.phase-tag.incident { color: var(--red);    border-color: rgba(255,80,80,.4);   background: rgba(255,80,80,.08); }
+.phase-tag.fixing   { color: var(--yellow); border-color: rgba(240,180,41,.4);  background: rgba(240,180,41,.08); }
+.phase-tag.done     { color: var(--green);  border-color: rgba(0,232,122,.4);   background: rgba(0,232,122,.08); }
+
+.activity-timer { margin-left: auto; font-size: .75rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+#activity-feed { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: .7rem; }
+
+/* Step cards */
+.step {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 1rem 1.1rem; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--surface2);
+  transition: border-color .35s, background .35s;
+  opacity: 0; transform: translateY(8px);
+  animation: stepIn .28s ease forwards; flex-shrink: 0;
+}
+@keyframes stepIn { to { opacity: 1; transform: translateY(0); } }
+
+.step.running { border-color: rgba(79,163,247,.3);  background: rgba(79,163,247,.04); }
+.step.done    { border-color: rgba(0,232,122,.22); }
+.step.warn    { border-color: rgba(240,180,41,.3);  background: rgba(240,180,41,.03); }
+.step.error   { border-color: rgba(255,80,80,.3);   background: rgba(255,80,80,.03); }
+.step.success { border-color: rgba(0,232,122,.3);   background: rgba(0,232,122,.04); }
+
+.step-icon-wrap {
+  width: 40px; height: 40px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem; flex-shrink: 0;
+  background: var(--surface3); position: relative;
+}
+.step.running .step-icon-wrap { background: rgba(79,163,247,.12); }
+.step.done    .step-icon-wrap { background: rgba(0,232,122,.1); }
+.step.warn    .step-icon-wrap { background: rgba(240,180,41,.1); }
+.step.error   .step-icon-wrap { background: rgba(255,80,80,.1); }
+.step.success .step-icon-wrap { background: rgba(0,232,122,.12); }
+
+.step.running .step-icon-wrap::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 14px;
+  border: 2px solid transparent;
+  border-top-color: var(--blue); border-right-color: rgba(79,163,247,.3);
+  animation: ring 1s linear infinite;
+}
+@keyframes ring { to { transform: rotate(360deg); } }
+
+.step-body { flex: 1; min-width: 0; }
+.step-title { font-size: 1rem; font-weight: 700; color: var(--text); line-height: 1.35; }
+.step.running .step-title { color: var(--blue); }
+.step.warn    .step-title { color: var(--yellow); }
+.step.error   .step-title { color: var(--red); }
+.step.success .step-title { color: var(--green); }
+
+.step-desc { font-size: .84rem; color: var(--muted); margin-top: .28rem; line-height: 1.55; }
+.step-tag {
+  display: inline-block; margin-top: .38rem; font-size: .7rem; font-weight: 600;
+  padding: .12rem .45rem; border-radius: 4px;
+  background: var(--surface3); color: var(--dim); font-family: monospace;
+}
+.step.warn  .step-tag { background: rgba(240,180,41,.1); color: var(--yellow); }
+.step.error .step-tag { background: rgba(255,80,80,.1);  color: var(--red); }
+.step.done  .step-tag { background: rgba(0,232,122,.08); color: var(--green); }
+
+/* Summary card */
+#summary-card {
+  margin: .5rem 0; padding: 1.25rem 1.4rem; border-radius: 16px;
+  border: 1px solid rgba(0,232,122,.3);
+  background: linear-gradient(135deg, rgba(0,232,122,.07) 0%, rgba(0,232,122,.03) 100%);
+  display: none; flex-shrink: 0; opacity: 0;
+  animation: stepIn .4s .1s ease forwards;
+}
+#summary-card.show { display: block; }
+.summary-title { font-size: 1.05rem; font-weight: 700; color: var(--green); margin-bottom: .5rem; display: flex; align-items: center; gap: .5rem; }
+.summary-stats { display: flex; gap: 1.5rem; margin-top: .75rem; }
+.sum-val { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.sum-val.green { color: var(--green); }
+.sum-val.blue  { color: var(--blue); }
+.sum-lbl { font-size: .65rem; color: var(--muted); margin-top: .08rem; text-transform: uppercase; letter-spacing: .06em; }
+
+#run-again-btn {
+  margin-top: 1rem; padding: .55rem 1.2rem;
+  background: var(--surface3); border: 1px solid var(--border2);
+  color: var(--text); font-size: .78rem; font-weight: 600;
+  border-radius: 8px; cursor: pointer; transition: all .15s;
+}
+#run-again-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+#summary-card.no-issues {
+  border-color: rgba(79,163,247,.3);
+  background: linear-gradient(135deg, rgba(79,163,247,.07) 0%, rgba(79,163,247,.03) 100%);
+}
+#summary-card.no-issues .summary-title { color: var(--blue); }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div class="logo-name">Code<em>Sentinel</em></div>
+  </div>
+  <div class="header-sep"></div>
+  <div id="global-status">
+    <div id="global-dot"></div>
+    <span id="global-label"></span>
+  </div>
+  <div class="spacer"></div>
+  <a href="/service" target="_blank" id="view-service-btn">🤖 PriceAI ↗</a>
+  <div class="lang-switcher">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+    <button class="lang-btn"        id="btn-ru" onclick="setLang('ru')">RU</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── SIDEBAR ─────────────────────────────────────────────────────────── -->
+  <div class="sidebar">
+
+    <div class="sb-section">
+      <div class="sb-title" data-i18n="sbServices"></div>
+      <div class="svc-list">
+
+        <div class="svc-card healthy" id="card-api">
+          <div class="svc-dot green" id="dot-api"></div>
+          <div class="svc-info">
+            <div class="svc-name" data-i18n="svcApiName"></div>
+            <div class="svc-role" data-i18n="svcApiRole"></div>
+          </div>
+          <div class="svc-badge green" id="badge-api"></div>
+        </div>
+
+        <div class="svc-card healthy" id="card-ml">
+          <div class="svc-dot green" id="dot-ml"></div>
+          <div class="svc-info">
+            <div class="svc-name" data-i18n="svcMlName"></div>
+            <div class="svc-role" data-i18n="svcMlRole"></div>
+          </div>
+          <div class="svc-badge green" id="badge-ml"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title" data-i18n="sbActivity"></div>
+      <div class="pulse-wrap">
+        <canvas id="pulse-canvas"></canvas>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-title" data-i18n="sbSummary"></div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val green" id="stat-resolved">0</div>
+          <div class="stat-lbl" data-i18n="statFixed"></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val blue" id="stat-runs">0</div>
+          <div class="stat-lbl" data-i18n="statRuns"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .sidebar -->
+
+  <!-- ── CONTENT ─────────────────────────────────────────────────────────── -->
+  <div class="content">
+
+
+    <!-- HOME PANEL -->
+    <div id="home-panel">
+      <div class="home-hero">
+        <div class="hero-icon">⚡</div>
+        <div class="hero-title" data-i18n-html="heroTitle"></div>
+        <div class="hero-sub" data-i18n="heroSub"></div>
+      </div>
+
+      <div class="home-options">
+        <div class="options-title" data-i18n="optionsTitle"></div>
+        <div class="option-row" onclick="toggleSimulate()">
+          <div class="toggle on" id="simulate-toggle"></div>
+          <div class="option-text">
+            <div class="option-label" data-i18n="optionLabel"></div>
+            <div class="option-desc"  data-i18n="optionDesc"></div>
+          </div>
+        </div>
+      </div>
+
+      <button id="start-btn" onclick="startTest()"></button>
+      <div class="start-hint" data-i18n-html="startHint"></div>
+    </div>
+
+    <!-- ACTIVITY PANEL -->
+    <div id="activity-panel">
+      <div class="activity-hd">
+        <div class="activity-hd-left">
+          <button id="back-btn" onclick="goHome()" data-i18n="backBtn"></button>
+          <div class="activity-title" data-i18n="activityTitle"></div>
+          <div class="phase-tag" id="phase-tag"></div>
+        </div>
+        <div class="activity-timer" id="run-timer">0:00</div>
+      </div>
+      <div id="activity-feed">
+        <div id="summary-card">
+          <div class="summary-title" id="summary-title"></div>
+          <div id="summary-body"></div>
+          <div class="summary-stats" id="summary-stats"></div>
+          <button id="run-again-btn" onclick="goHome()" data-i18n="runAgainBtn"></button>
+        </div>
+      </div>
+    </div>
+
+
+  </div><!-- .content -->
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+'use strict';
+
+// ── TRANSLATIONS ───────────────────────────────────────────────────────────
+const LANG = {
+  en: {
+    // Header / global
+    allOk:             'All Systems Operational',
+    incidentDetected:  'Incident Detected',
+    aiRemediating:     'AI Remediating',
+    runningTest:       'Running system test…',
+    // Sidebar
+    sbServices: 'Your Services',
+    sbActivity: 'System Activity',
+    sbSummary:  'Summary',
+    svcApiName: 'Price Prediction',
+    svcApiRole: 'Forecasting API',
+    svcMlName:  'ML Inference Engine',
+    svcMlRole:  'PyTorch Worker',
+    statFixed:  'Issues fixed',
+    statRuns:   'Tests run',
+    // Badges
+    badgeHealthy:    'Healthy',
+    badgeFault:      'Fault',
+    badgeChecking:   'Checking…',
+    badgeIssueFound: 'Issue Found',
+    badgeFixing:     'Fixing…',
+    badgeVerifying:  'Verifying…',
+    // Home panel
+    heroTitle:    'Meet <em>CodeSentinel AI</em>',
+    heroSub:      'An autonomous AI agent that monitors your production services, instantly detects issues, and fixes them automatically — without any human intervention.',
+    optionsTitle: 'Test Options',
+    optionLabel:  'Simulate errors',
+    optionDesc:   "Introduce artificial bugs to demonstrate the AI's ability to detect and fix them automatically.",
+    startBtn:     '▶  Start System Test',
+    startHint:    'Press <span class="key-hint">Space</span> or <span class="key-hint">Enter</span> to run',
+    // Activity panel
+    activityTitle: 'System Test',
+    backBtn:       '← Back',
+    runAgainBtn:   '← Run another test',
+    // Phase tags
+    phaseStarting:     'Starting…',
+    phaseScanning:     'Scanning',
+    phaseIncident:     'Incident',
+    phaseRemediating:  'Remediating',
+    phaseVerifying:    'Verifying',
+    phaseResolved:     'Resolved',
+    phaseAllClear:     'All Clear',
+    // Activity steps — static
+    stepStartTitle:      'System test started',
+    stepStartDesc:       (n) => `Checking ${n} services for issues…`,
+    stepScanTitle:       'Running health checks',
+    stepScanDesc:        'Sending real test requests to every service and checking the responses…',
+    checkApiTitle:       'Checking Price Prediction API',
+    checkApiDesc:        'Sending test predictions — waiting for a response…',
+    checkMlTitle:        'Checking ML Inference Engine',
+    checkMlDesc:         'Sending similarity queries — waiting for a response…',
+    scanIssuesTitle:     'Health check complete — issues found',
+    scanIssuesDesc:      'One or more services are failing. Starting incident response.',
+    scanOkTitle:         'All services are healthy',
+    scanOkDesc:          'Every service responded correctly — no issues detected.',
+    alertTitle:          'On-call team alerted',
+    alertDesc:           'Telegram message sent to the engineering team with full incident details',
+    aiTitle:             'OpenClaw AI agent activated',
+    aiDesc:              'The AI is reading the source code, tracing the error, and planning the exact fix…',
+    verifyTitle:         'Running tests to confirm the fix',
+    verifyDesc:          'Re-sending the same requests that were failing before — checking they all succeed now…',
+    verifyDoneTitle:     'Fix confirmed — all tests pass',
+    verifyDoneDesc:      'Every previously-failing test is now green. The patch is live.',
+    rootTitle:           'Root cause found',
+    // Activity steps — dynamic (take label as arg)
+    bugTitle:            (l) => `Bug planted in ${l}`,
+    bugDesc:             'Introducing a hidden defect so the AI has something real to find and fix',
+    checkSvcTitle:       (l) => `Checking ${l}`,
+    checkSvcDesc:        'Sending test requests and checking that every response is correct…',
+    downTitle:           (l) => `${l} is down`,
+    fixReadTitle:        (l) => `AI is reading the code for ${l}`,
+    fixWriteTitle:       (l) => `Writing the fix for ${l}`,
+    restoredTitle:       (l) => `${l} is back online`,
+    restoredDesc:        'Patch applied, all tests passing — the service is fully operational again',
+    secOkTitle:          (l) => `Security scan passed — ${l}`,
+    secOkDesc:           (p, t) => `${p}/${t} checks passed: no secrets exposed, no new dependencies, no injection risks`,
+    secFailTitle:        (l) => `Security concern in ${l}`,
+    secFailDesc:         (p, t) => `Only ${p}/${t} checks passed — patch needs manual review before going live`,
+    connProbTitle:       'Connection problem',
+    connProbDesc:        'Could not connect to the server. Check that the backend is running.',
+    connLostTitle:       'Connection lost',
+    connLostDesc:        'The stream disconnected unexpectedly. The test may still be running.',
+    // Summary card
+    sumAllClearTitle:    '✅ All clear!',
+    sumAllClearBody:     'All services are healthy. No issues detected.',
+    sumIssuesFound:      'Issues found',
+    sumDuration:         'Test duration',
+    sumResolvedTitle:    '🎉 Incident resolved automatically',
+    sumResolvedBody:     (f, x) => `The AI agent found ${f} issue${f>1?'s':''} and fixed ${x===f?'all of them':`${x} of them`} without any human intervention.`,
+    sumAutoFixed:        'Auto-fixed',
+    sumResTime:          'Resolution time',
+    sumSaved:            'Saved vs manual',
+    // Service-specific descriptions
+    serviceLabel: {
+      'price-prediction-api':   'Price Prediction API',
+      'torch-inference-worker': 'ML Inference Engine',
+    },
+    serviceIssue: {
+      'price-prediction-api':   'Every request to /predict is crashing with a 500 error — all mobile clients are affected',
+      'torch-inference-worker': 'All similarity queries are failing — the ML model is rejecting every input it receives',
+    },
+    serviceRoot: {
+      'price-prediction-api':   'Found it: main.py line 27 divides by the number of inputs, but nobody checked if the list was empty first — a classic divide-by-zero crash',
+      'torch-inference-worker': "Found it: torch_worker.py is creating the data tensor as integers, but PyTorch's matrix multiply only works with decimals — a single wrong word in the code",
+    },
+    serviceFix: {
+      'price-prediction-api':   'Adding a safety check at the top: "if the input list is empty, return a safe default immediately" — 1 line of code',
+      'torch-inference-worker': 'Changing one word in torch_worker.py: int32 → float32 — the tensor now speaks the right language',
+    },
+  },
+
+  ru: {
+    allOk:            'Все системы работают',
+    incidentDetected: 'Обнаружен инцидент',
+    aiRemediating:    'ИИ устраняет проблему',
+    runningTest:      'Запуск системного теста…',
+    sbServices: 'Ваши сервисы',
+    sbActivity: 'Активность системы',
+    sbSummary:  'Итоги',
+    svcApiName: 'API прогноза цен',
+    svcApiRole: 'Сервис прогнозирования',
+    svcMlName:  'Движок машинного обучения',
+    svcMlRole:  'Воркер PyTorch',
+    statFixed:  'Исправлено',
+    statRuns:   'Запусков',
+    badgeHealthy:    'Работает',
+    badgeFault:      'Сбой',
+    badgeChecking:   'Проверка…',
+    badgeIssueFound: 'Ошибка',
+    badgeFixing:     'Исправление…',
+    badgeVerifying:  'Верификация…',
+    heroTitle:    'Знакомьтесь — <em>CodeSentinel AI</em>',
+    heroSub:      'Автономный ИИ-агент, который следит за вашими сервисами, мгновенно обнаруживает проблемы и исправляет их автоматически — без участия человека.',
+    optionsTitle: 'Параметры теста',
+    optionLabel:  'Симулировать ошибки',
+    optionDesc:   'Вносит искусственные баги для демонстрации способности ИИ их обнаруживать и исправлять.',
+    startBtn:     '▶  Запустить системный тест',
+    startHint:    'Нажмите <span class="key-hint">Пробел</span> или <span class="key-hint">Enter</span> для запуска',
+    activityTitle: 'Системный тест',
+    backBtn:       '← Назад',
+    runAgainBtn:   '← Запустить ещё тест',
+    phaseStarting:    'Запуск…',
+    phaseScanning:    'Сканирование',
+    phaseIncident:    'Инцидент',
+    phaseRemediating: 'Устранение',
+    phaseVerifying:   'Верификация',
+    phaseResolved:    'Решено',
+    phaseAllClear:    'Всё в норме',
+    stepStartTitle:   'Системный тест запущен',
+    stepStartDesc:    (n) => `Проверяем ${n} сервис${n===1?'':n<5?'а':'ов'} на наличие ошибок…`,
+    stepScanTitle:    'Проверка работоспособности',
+    stepScanDesc:     'Отправляем реальные тестовые запросы к каждому сервису и проверяем ответы…',
+    checkApiTitle:    'Проверка API прогноза цен',
+    checkApiDesc:     'Отправляем тестовые предсказания — ждём ответа…',
+    checkMlTitle:     'Проверка движка машинного обучения',
+    checkMlDesc:      'Отправляем запросы на вычисление схожести — ждём ответа…',
+    scanIssuesTitle:  'Проверка завершена — найдены проблемы',
+    scanIssuesDesc:   'Один или несколько сервисов работают с ошибками. Начинаем устранение инцидента.',
+    scanOkTitle:      'Все сервисы работают исправно',
+    scanOkDesc:       'Каждый сервис ответил корректно — проблем не обнаружено.',
+    alertTitle:       'Дежурная команда оповещена',
+    alertDesc:        'Telegram-сообщение с деталями инцидента отправлено инженерной команде',
+    aiTitle:          'ИИ-агент OpenClaw активирован',
+    aiDesc:           'ИИ читает исходный код, отслеживает ошибку и планирует точное исправление…',
+    verifyTitle:      'Запуск тестов для подтверждения исправления',
+    verifyDesc:       'Повторно отправляем те же запросы, которые завершались ошибкой — проверяем, что теперь они успешны…',
+    verifyDoneTitle:  'Исправление подтверждено — все тесты пройдены',
+    verifyDoneDesc:   'Все ранее не проходившие тесты теперь зелёные. Патч применён.',
+    rootTitle:        'Первопричина найдена',
+    bugTitle:         (l) => `Баг внесён в ${l}`,
+    bugDesc:          'Добавляем скрытый дефект, чтобы ИИ мог найти и исправить реальную ошибку',
+    checkSvcTitle:    (l) => `Проверка ${l}`,
+    checkSvcDesc:     'Отправляем тестовые запросы и проверяем корректность каждого ответа…',
+    downTitle:        (l) => `${l} не работает`,
+    fixReadTitle:     (l) => `ИИ читает код ${l}`,
+    fixWriteTitle:    (l) => `Написание исправления для ${l}`,
+    restoredTitle:    (l) => `${l} снова работает`,
+    restoredDesc:     'Патч применён, все тесты пройдены — сервис полностью восстановлен',
+    secOkTitle:       (l) => `Проверка безопасности пройдена — ${l}`,
+    secOkDesc:        (p, t) => `${p}/${t} проверок пройдено: нет утечек секретов, нет новых зависимостей, нет рисков инъекций`,
+    secFailTitle:     (l) => `Проблема безопасности в ${l}`,
+    secFailDesc:      (p, t) => `Только ${p}/${t} проверок пройдено — патч требует ручной проверки перед деплоем`,
+    connProbTitle:    'Проблема с подключением',
+    connProbDesc:     'Не удалось подключиться к серверу. Убедитесь, что бэкенд запущен.',
+    connLostTitle:    'Соединение потеряно',
+    connLostDesc:     'Поток данных неожиданно оборвался. Тест может ещё выполняться.',
+    sumAllClearTitle: '✅ Всё в норме!',
+    sumAllClearBody:  'Все сервисы работают исправно. Проблем не обнаружено.',
+    sumIssuesFound:   'Найдено проблем',
+    sumDuration:      'Длительность теста',
+    sumResolvedTitle: '🎉 Инцидент устранён автоматически',
+    sumResolvedBody:  (f, x) => `ИИ-агент обнаружил ${f} проблем${f===1?'у':f<5?'ы':''} и исправил ${x===f?'все из них':`${x} из них`} без участия человека.`,
+    sumAutoFixed:     'Исправлено',
+    sumResTime:       'Время решения',
+    sumSaved:         'Экономия vs ручного',
+    serviceLabel: {
+      'price-prediction-api':   'API прогноза цен',
+      'torch-inference-worker': 'Движок машинного обучения',
+    },
+    serviceIssue: {
+      'price-prediction-api':   'Каждый запрос к /predict завершается ошибкой 500 — затронуты все мобильные клиенты',
+      'torch-inference-worker': 'Все запросы на вычисление схожести завершаются ошибкой — модель МО отклоняет каждый входящий запрос',
+    },
+    serviceRoot: {
+      'price-prediction-api':   'Нашли: main.py строка 27 делит на количество входных данных, но никто не проверил, что список пуст — классическое деление на ноль',
+      'torch-inference-worker': 'Нашли: torch_worker.py создаёт тензор данных как целые числа, но матричное умножение PyTorch работает только с числами с плавающей точкой — одно неверное слово в коде',
+    },
+    serviceFix: {
+      'price-prediction-api':   'Добавляем проверку в начало: «если список входных данных пуст, немедленно вернуть безопасное значение» — 1 строка кода',
+      'torch-inference-worker': 'Меняем одно слово в torch_worker.py: int32 → float32 — тензор теперь использует правильный тип данных',
+    },
+  },
+};
+
+// ── LANGUAGE HELPERS ──────────────────────────────────────────────────────
+let lang = 'en';
+
+function T(key, ...args) {
+  const v = LANG[lang][key];
+  if (typeof v === 'function') return v(...args);
+  return v !== undefined ? v : (LANG.en[key] || key);
+}
+
+function applyTranslations() {
+  // Static text nodes
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = LANG[lang][el.dataset.i18n];
+    if (v !== undefined) el.textContent = v;
+  });
+  // Nodes that need innerHTML (contain <em>, <span>, etc.)
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = LANG[lang][el.dataset.i18nHtml];
+    if (v !== undefined) el.innerHTML = v;
+  });
+  // Start button
+  const sb = document.getElementById('start-btn');
+  if (sb) sb.textContent = T('startBtn');
+  // Re-apply badge text for current node statuses
+  refreshAllBadges();
+  // Global label (only when not running)
+  if (!isRunning) {
+    document.getElementById('global-label').textContent = T('allOk');
+  }
+}
+
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.getElementById('btn-ru').classList.toggle('active', l === 'ru');
+  applyTranslations();
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let simulateErrors = true;
+let isRunning      = false;
+let es             = null;
+let timerInterval  = null;
+let runStart       = null;
+let totalRuns      = 0;
+let totalFixed     = 0;
+let issuesFound    = 0;
+let issuesFixed    = 0;
+
+// ── PULSE CHART ───────────────────────────────────────────────────────────
+const pulseData = Array(60).fill(95);
+let pulseChart  = null;
+let healthTarget = 95;
+
+if (window.Chart) {
+  pulseChart = new Chart(
+    document.getElementById('pulse-canvas').getContext('2d'),
+    {
+      type: 'line',
+      data: {
+        labels: pulseData.map((_, i) => i),
+        datasets: [{
+          data: [...pulseData],
+          borderColor: '#00e87a', backgroundColor: 'rgba(0,232,122,.06)',
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: .4,
+        }],
+      },
+      options: {
+        animation: false,
+        scales: { x: { display: false }, y: { display: false, min: 0, max: 110 } },
+        plugins: { legend: { display: false } },
+      },
+    }
+  );
+} else {
+  const c = document.getElementById('pulse-canvas');
+  if (c) c.style.display = 'none';
+}
+
+function pushPulse(v) {
+  pulseData.push(Math.max(2, Math.min(100, v)));
+  if (pulseData.length > 60) pulseData.shift();
+  if (!pulseChart) return;
+  const color = v < 35 ? '#ff5050' : v < 65 ? '#f0b429' : '#00e87a';
+  const ds = pulseChart.data.datasets[0];
+  ds.data = [...pulseData];
+  ds.borderColor = color;
+  ds.backgroundColor = color + '10';
+  pulseChart.update('none');
+}
+
+setInterval(() => pushPulse(healthTarget + (Math.random() * 8 - 4)), 900);
+
+// ── SERVICE CARD HELPERS ──────────────────────────────────────────────────
+const NODE_MAP = {
+  'price-prediction-api':   'api',
+  'torch-inference-worker': 'ml',
+};
+// Maps status → badge color class + translation key
+const BADGE_DEF = {
+  healthy:   { cls: 'green',  key: 'badgeHealthy' },
+  injecting: { cls: 'red',    key: 'badgeFault' },
+  running:   { cls: 'blue',   key: 'badgeChecking' },
+  error:     { cls: 'red',    key: 'badgeIssueFound' },
+  fixing:    { cls: 'yellow', key: 'badgeFixing' },
+  verifying: { cls: 'blue',   key: 'badgeVerifying' },
+};
+const DOT_CLS = {
+  healthy: 'green', injecting: 'red', running: 'blue',
+  error: 'red', fixing: 'yellow', verifying: 'blue',
+};
+
+// Track current status of each node so we can refresh badges on lang change
+const nodeStatus = {};
+
+function setNode(id, status) {
+  const key = NODE_MAP[id];
+  if (!key) return;
+  nodeStatus[key] = status;                          // remember for lang refresh
+  const card  = document.getElementById('card-'  + key);
+  const dot   = document.getElementById('dot-'   + key);
+  const badge = document.getElementById('badge-' + key);
+  const def   = BADGE_DEF[status] || BADGE_DEF.healthy;
+  const dotCls = DOT_CLS[status] || 'green';
+  const cardCls = status === 'healthy' ? 'healthy' : (status === 'error' || status === 'injecting' ? 'error' : status);
+  if (card)  card.className  = 'svc-card '  + cardCls;
+  if (dot)   dot.className   = 'svc-dot '   + dotCls;
+  if (badge) { badge.className = 'svc-badge ' + def.cls; badge.textContent = T(def.key); }
+}
+
+function refreshAllBadges() {
+  Object.entries(nodeStatus).forEach(([key, status]) => {
+    const badge = document.getElementById('badge-' + key);
+    const def   = BADGE_DEF[status] || BADGE_DEF.healthy;
+    if (badge) { badge.className = 'svc-badge ' + def.cls; badge.textContent = T(def.key); }
+  });
+  // Init badges that haven't been set yet
+  Object.keys(NODE_MAP).forEach(id => {
+    const key = NODE_MAP[id];
+    if (!nodeStatus[key]) {
+      const badge = document.getElementById('badge-' + key);
+      if (badge && !badge.textContent) badge.textContent = T('badgeHealthy');
+    }
+  });
+}
+
+function resetNodes() {
+  Object.keys(NODE_MAP).forEach(id => setNode(id, 'healthy'));
+}
+
+// ── GLOBAL STATUS + PHASE ─────────────────────────────────────────────────
+function setGlobal(state, key) {
+  const dot = document.getElementById('global-dot');
+  const lbl = document.getElementById('global-label');
+  dot.className = state === 'bad' ? 'bad' : state === 'fixing' ? 'fixing' : '';
+  if (lbl) lbl.textContent = T(key);
+}
+
+function setPhaseTag(cls, key) {
+  const el = document.getElementById('phase-tag');
+  if (el) { el.className = 'phase-tag ' + cls; el.textContent = T(key); }
+}
+
+// ── TOGGLE ────────────────────────────────────────────────────────────────
+function toggleSimulate() {
+  if (isRunning) return;
+  simulateErrors = !simulateErrors;
+  const t = document.getElementById('simulate-toggle');
+  if (t) t.className = 'toggle' + (simulateErrors ? ' on' : '');
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+function showActivity() {
+  const home = document.getElementById('home-panel');
+  const act  = document.getElementById('activity-panel');
+  home.style.display = 'none';
+  act.classList.add('visible');
+  requestAnimationFrame(() => act.classList.add('shown'));
+}
+
+function goHome() {
+  if (isRunning) return;
+  const home = document.getElementById('home-panel');
+  const act  = document.getElementById('activity-panel');
+  act.classList.remove('shown');
+  setTimeout(() => {
+    act.classList.remove('visible');
+    act.style.display = '';
+    home.style.display = '';
+  }, 300);
+  resetNodes();
+  setGlobal('', 'allOk');
+  healthTarget = 95;
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────────────
+function startTimer() {
+  runStart = Date.now();
+  timerInterval = setInterval(() => {
+    const s  = Math.floor((Date.now() - runStart) / 1000);
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    const el = document.getElementById('run-timer');
+    if (el) el.textContent = `${mm}:${ss}`;
+  }, 500);
+}
+function stopTimer()  { clearInterval(timerInterval); }
+function elapsedSec() { return runStart ? Math.floor((Date.now() - runStart) / 1000) : 0; }
+
+// ── ACTIVITY FEED ─────────────────────────────────────────────────────────
+const stepRegistry = {};
+
+function addStep(id, icon, title, desc, state) {
+  const feed = document.getElementById('activity-feed');
+  if (!feed) return;
+  if (stepRegistry[id]) { updateStep(id, icon, title, desc, state); return; }
+  const el = document.createElement('div');
+  el.className = 'step ' + state;
+  el.id = 'step-' + id;
+  el.innerHTML =
+    `<div class="step-icon-wrap"><span class="step-icon">${icon}</span></div>` +
+    `<div class="step-body"><div class="step-title">${esc(title)}</div><div class="step-desc">${esc(desc)}</div></div>`;
+  feed.insertBefore(el, document.getElementById('summary-card'));
+  stepRegistry[id] = el;
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function updateStep(id, icon, title, desc, state) {
+  const el = stepRegistry[id];
+  if (!el) { addStep(id, icon, title, desc, state); return; }
+  el.className = 'step ' + state;
+  const si = el.querySelector('.step-icon');
+  const st = el.querySelector('.step-title');
+  const sd = el.querySelector('.step-desc');
+  if (si) si.textContent = icon;
+  if (st) st.textContent = title;
+  if (sd) sd.textContent = desc;
+  document.getElementById('activity-feed').scrollTop = 99999;
+}
+
+function addTag(id, tagText) {
+  const el = stepRegistry[id];
+  if (!el) return;
+  const body = el.querySelector('.step-body');
+  if (!body) return;
+  let tag = body.querySelector('.step-tag');
+  if (!tag) { tag = document.createElement('div'); tag.className = 'step-tag'; body.appendChild(tag); }
+  tag.textContent = tagText;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function resetFeed() {
+  const feed = document.getElementById('activity-feed');
+  [...feed.querySelectorAll('.step')].forEach(el => el.remove());
+  for (const k in stepRegistry) delete stepRegistry[k];
+  const sc = document.getElementById('summary-card');
+  if (sc) { sc.className = ''; sc.style.display = 'none'; }
+}
+
+// ── SUMMARY ───────────────────────────────────────────────────────────────
+function showSummary(noIssues) {
+  const card  = document.getElementById('summary-card');
+  const title = document.getElementById('summary-title');
+  const body  = document.getElementById('summary-body');
+  const stats = document.getElementById('summary-stats');
+  const s  = elapsedSec();
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+
+  if (noIssues) {
+    title.textContent = T('sumAllClearTitle');
+    body.innerHTML    = `<div style="font-size:.84rem;color:var(--muted);margin-top:.35rem;">${T('sumAllClearBody')}</div>`;
+    stats.innerHTML   =
+      `<div class="sum-stat"><div class="sum-val blue">0</div><div class="sum-lbl">${T('sumIssuesFound')}</div></div>` +
+      `<div class="sum-stat"><div class="sum-val green">${mm}:${ss}</div><div class="sum-lbl">${T('sumDuration')}</div></div>`;
+    card.className = 'show no-issues';
+  } else {
+    title.textContent = T('sumResolvedTitle');
+    body.innerHTML    = `<div style="font-size:.84rem;color:var(--muted);margin-top:.35rem;">${T('sumResolvedBody', issuesFound, issuesFixed)}</div>`;
+    stats.innerHTML   =
+      `<div class="sum-stat"><div class="sum-val green">${issuesFixed}</div><div class="sum-lbl">${T('sumAutoFixed')}</div></div>` +
+      `<div class="sum-stat"><div class="sum-val">${mm}:${ss}</div><div class="sum-lbl">${T('sumResTime')}</div></div>` +
+      `<div class="sum-stat"><div class="sum-val blue">~4 hrs</div><div class="sum-lbl">${T('sumSaved')}</div></div>`;
+    card.className = 'show';
+  }
+  // run-again-btn text is already covered by data-i18n but update it live
+  const rab = document.getElementById('run-again-btn');
+  if (rab) rab.textContent = T('runAgainBtn');
+  document.getElementById('activity-feed').scrollTop = 99999;
+}
+
+// ── SERVICE EVENT HANDLING ─────────────────────────────────────────────────
+let secChecksTotal  = {};
+let secChecksPassed = {};
+let fixedServices   = new Set();
+
+function handleServiceEvent(msg) {
+  // Always sync the sidebar card first
+  setNode(msg.id, msg.status);
+
+  const label = (LANG[lang].serviceLabel || {})[msg.id] || msg.id;
+  switch (msg.status) {
+    case 'injecting':
+      addStep('inject-' + msg.id, '🐛', T('bugTitle', label), T('bugDesc'), 'warn');
+      addTag('inject-' + msg.id, msg.id);
+      break;
+    case 'running':
+      updateStep('check-' + msg.id, '🔍', T('checkSvcTitle', label), T('checkSvcDesc'), 'running');
+      break;
+    case 'error':
+      issuesFound++;
+      updateStep('check-' + msg.id, '⚠️', T('downTitle', label),
+        (LANG[lang].serviceIssue || {})[msg.id] || T('downTitle', label), 'warn');
+      addTag('check-' + msg.id, msg.id);
+      healthTarget = 18;
+      setGlobal('bad', 'incidentDetected');
+      setPhaseTag('incident', 'phaseIncident');
+      break;
+    case 'fixing':
+      addStep('fix-' + msg.id, '🔧', T('fixReadTitle', label),
+        (LANG[lang].serviceFix || {})[msg.id] || T('fixReadTitle', label), 'running');
+      setGlobal('fixing', 'aiRemediating');
+      setPhaseTag('fixing', 'phaseRemediating');
+      break;
+    case 'healthy':
+      if (fixedServices.has(msg.id)) return;
+      if (issuesFound > 0) {
+        fixedServices.add(msg.id);
+        issuesFixed++;
+        updateStep('fix-' + msg.id, '✅', T('restoredTitle', label), T('restoredDesc'), 'success');
+        healthTarget = 90;
+      }
+      break;
+  }
+}
+
+function handleLogEvent(text) {
+  if (!text) return;
+  if (/PHASE 1/.test(text)) {
+    addStep('scan', '🔍', T('stepScanTitle'), T('stepScanDesc'), 'running');
+    setPhaseTag('running', 'phaseScanning');
+    addStep('check-price-prediction-api',   '🔍', T('checkApiTitle'), T('checkApiDesc'), 'running');
+    addStep('check-torch-inference-worker', '🔍', T('checkMlTitle'),  T('checkMlDesc'),  'running');
+  } else if (/PHASE 2/.test(text)) {
+    updateStep('scan', '🔍', T('scanIssuesTitle'), T('scanIssuesDesc'), 'done');
+    addStep('alert', '📬', T('alertTitle'), T('alertDesc'), 'done');
+    setPhaseTag('incident', 'phaseIncident');
+  } else if (/PHASE 3/.test(text)) {
+    addStep('ai-start', '🤖', T('aiTitle'), T('aiDesc'), 'running');
+    setPhaseTag('fixing', 'phaseRemediating');
+  } else if (/Re-running/.test(text)) {
+    addStep('verify', '🧪', T('verifyTitle'), T('verifyDesc'), 'running');
+    setPhaseTag('fixing', 'phaseVerifying');
+  } else if (/PHASE 5/.test(text)) {
+    updateStep('verify', '🧪', T('verifyDoneTitle'), T('verifyDoneDesc'), 'done');
+    setPhaseTag('done', 'phaseResolved');
+  } else if (/All services healthy/.test(text) && issuesFound === 0) {
+    updateStep('scan', '✅', T('scanOkTitle'), T('scanOkDesc'), 'success');
+    setPhaseTag('done', 'phaseAllClear');
+  }
+}
+
+function handleAgentStep(msg) {
+  const label = (LANG[lang].serviceLabel || {})[msg.service] || msg.service;
+  switch (msg.phase) {
+    case 'hyp_ok':
+      updateStep('ai-start', '💡', T('rootTitle'),
+        (LANG[lang].serviceRoot || {})[msg.service] || msg.text, 'done');
+      addTag('ai-start', msg.service);
+      break;
+    case 'patch':
+      updateStep('fix-' + msg.service, '🔧', T('fixWriteTitle', label),
+        (LANG[lang].serviceFix || {})[msg.service] || T('fixWriteTitle', label), 'running');
+      break;
+    case 'verified':
+      issuesFixed = Math.max(issuesFixed, fixedServices.size);
+      break;
+  }
+}
+
+function handleSecurityEvent(msg) {
+  if (msg.action === 'start') {
+    secChecksTotal[msg.service]  = 0;
+    secChecksPassed[msg.service] = 0;
+  } else if (msg.action === 'check' && msg.status === 'pass') {
+    secChecksTotal[msg.service]  = (secChecksTotal[msg.service]  || 0) + 1;
+    secChecksPassed[msg.service] = (secChecksPassed[msg.service] || 0) + 1;
+  } else if (msg.action === 'check' && msg.status === 'fail') {
+    secChecksTotal[msg.service] = (secChecksTotal[msg.service] || 0) + 1;
+  } else if (msg.action === 'done') {
+    const t   = secChecksTotal[msg.service]  || 5;
+    const p   = secChecksPassed[msg.service] || 5;
+    const ok  = msg.verdict === 'SECURE';
+    const lbl = (LANG[lang].serviceLabel || {})[msg.service] || msg.service;
+    addStep('sec-' + msg.service,
+      ok ? '🔒' : '⚠️',
+      ok ? T('secOkTitle', lbl)   : T('secFailTitle', lbl),
+      ok ? T('secOkDesc', p, t)   : T('secFailDesc', p, t),
+      ok ? 'done' : 'warn');
+  }
+}
+
+// ── START / STREAM ────────────────────────────────────────────────────────
+function startTest() {
+  if (isRunning) return;
+  isRunning = true;
+  issuesFound = 0;
+  issuesFixed = 0;
+  fixedServices.clear();
+  secChecksTotal  = {};
+  secChecksPassed = {};
+
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('run-timer').textContent = '0:00';
+
+  resetFeed();
+  showActivity();
+  setPhaseTag('running', 'phaseStarting');
+  setGlobal('', 'runningTest');
+
+  addStep('start', '🚀', T('stepStartTitle'), T('stepStartDesc', Object.keys(NODE_MAP).length), 'done');
+
+  startTimer();
+  totalRuns++;
+  document.getElementById('stat-runs').textContent = totalRuns;
+
+  if (es) es.close();
+  es = new EventSource('/stream?inject=' + simulateErrors);
+
+  let finished     = false;
+  let gotFirstEvent = false;
+  const watchdog = setTimeout(() => {
+    if (finished || gotFirstEvent) return;
+    addStep('conn-err', '⚠️', T('connProbTitle'), T('connProbDesc'), 'error');
+    finishRun(false);
+  }, 5000);
+
+  es.onmessage = function(ev) {
+    gotFirstEvent = true;
+    let msg;
+    try { msg = JSON.parse(ev.data || ''); } catch (_) { return; }
+
+    switch (msg.type) {
+      case 'log':        handleLogEvent(msg.text || '');  break;
+      case 'service':    handleServiceEvent(msg);          break;  // ← setNode called inside
+      case 'agent_step': handleAgentStep(msg);             break;
+      case 'security':   handleSecurityEvent(msg);         break;
+      case 'metric':
+        healthTarget = Math.max(5, 100 - (msg.cpu * 0.65)); break;
+      case 'revenue':
+        if (msg.action === 'start') healthTarget = 18;       break;
+      case 'done':
+        finished = true;
+        clearTimeout(watchdog);
+        finishRun(true);
+        break;
+    }
+  };
+
+  es.onerror = function() {
+    if (finished) return;
+    clearTimeout(watchdog);
+    if (gotFirstEvent) { finishRun(true); }
+    else {
+      addStep('conn-lost', '⚠️', T('connLostTitle'), T('connLostDesc'), 'error');
+      finishRun(false);
+    }
+  };
+}
+
+function finishRun(success) {
+  isRunning = false;
+  stopTimer();
+  if (es) { es.close(); es = null; }
+  document.getElementById('start-btn').disabled = false;
+
+  if (success) {
+    healthTarget = 95;
+    if (issuesFound === 0) {
+      setGlobal('', 'allOk');
+      showSummary(true);
+      setPhaseTag('done', 'phaseAllClear');
+    } else {
+      totalFixed += issuesFixed;
+      document.getElementById('stat-resolved').textContent = totalFixed;
+      setGlobal('', 'allOk');
+      showSummary(false);
+      setPhaseTag('done', 'phaseResolved');
+    }
+  }
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const onHome = !document.getElementById('activity-panel').classList.contains('visible');
+  if ((e.key === ' ' || e.key === 'Enter') && onHome && !isRunning) {
+    e.preventDefault(); startTest();
+  }
+});
+
+
+// ── BOT SYNC — auto-start when Telegram triggers the simulation ───────────
+// Polls /bot/status and auto-starts the stream when the bot has triggered it.
+// Runs immediately on load AND every 2 s so a freshly opened browser tab
+// will catch a trigger that happened up to 5 s ago (the activation delay).
+async function _checkBotTrigger() {
+  if (isRunning) return;
+  try {
+    const r = await fetch('/bot/status').then(res => res.json());
+    if (r.triggered) startTest();
+  } catch (_) {}
+}
+_checkBotTrigger();                      // immediate check on page load
+setInterval(_checkBotTrigger, 2000);     // then every 2 s
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+applyTranslations(); // populate all data-i18n elements on load
+</script>
+</body>
+</html>
