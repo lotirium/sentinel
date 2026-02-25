@@ -15,6 +15,11 @@ class PredictionResponse(BaseModel):
     feature_count: int
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     # Guard: return default immediately when features list is empty
